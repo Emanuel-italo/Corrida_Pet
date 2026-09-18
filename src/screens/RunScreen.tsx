@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,6 +22,8 @@ const ARRIVAL_RADIUS_METERS = 25;
 const CHROME_MAX_WIDTH = 480;
 // Espaço reservado no rodapé para a tab bar flutuante (ver App.tsx) não cobrir o botão.
 const TAB_BAR_CLEARANCE = 96;
+// Parceiro veterinário sugerido após o reencontro com o pet.
+const VET_BOOKING_URL = 'https://clyvo-vet-web.onrender.com/';
 
 // A coleira real ainda não está integrada: até lá, simulamos o sinal
 // (posição inicial próxima ao dono + variação leve a cada tick) para validar o fluxo de busca.
@@ -131,6 +133,7 @@ export default function RunScreen() {
   const [petIconDataUri, setPetIconDataUri] = useState<string | null>(null);
   const [currentInstruction, setCurrentInstruction] = useState<string | null>(null);
   const [voices, setVoices] = useState<Speech.Voice[]>([]);
+  const [showFoundModal, setShowFoundModal] = useState(false);
 
   const postToMap = useCallback((message: object) => {
     if (!isMapReadyRef.current) return;
@@ -239,6 +242,41 @@ export default function RunScreen() {
     Speech.stop();
   }, [postToMap]);
 
+  const finishTrackingSession = useCallback(() => {
+    subscriptionRef.current?.remove();
+    subscriptionRef.current = null;
+    if (jitterTimerRef.current) {
+      clearInterval(jitterTimerRef.current);
+      jitterTimerRef.current = null;
+    }
+    setIsTracking(false);
+    cancelRoute();
+
+    const durationSeconds = sessionStartRef.current ? Math.round((Date.now() - sessionStartRef.current) / 1000) : 0;
+    sessionStartRef.current = null;
+
+    const summary = completeRun({ hexIds: [], distanceMeters, durationSeconds });
+
+    setPetSignal(null);
+    petSignalRef.current = null;
+    setDistanceToPet(null);
+
+    return { summary, durationSeconds };
+  }, [cancelRoute, completeRun, distanceMeters]);
+
+  const handlePetFound = useCallback(() => {
+    speak('Você encontrou seu pet! Que alívio.');
+    finishTrackingSession();
+    setShowFoundModal(true);
+  }, [finishTrackingSession, speak]);
+
+  const handleOpenVetBooking = useCallback(() => {
+    setShowFoundModal(false);
+    Linking.openURL(VET_BOOKING_URL).catch(() => {
+      Alert.alert('Não foi possível abrir o link', 'Tente novamente em instantes.');
+    });
+  }, []);
+
   const handleOwnerPositionUpdate = useCallback(
     (location: Location.LocationObject) => {
       const point: LatLng = {
@@ -264,8 +302,7 @@ export default function RunScreen() {
         const distanceToDestination = haversineDistanceMeters(point, routeState.destination);
 
         if (distanceToDestination < ARRIVAL_RADIUS_METERS) {
-          speak('Você encontrou seu pet!');
-          cancelRoute();
+          handlePetFound();
         } else if (routeState.currentStepIndex < routeState.steps.length - 1) {
           const step = routeState.steps[routeState.currentStepIndex];
           const distanceToManeuver = haversineDistanceMeters(point, step.maneuverPoint);
@@ -281,7 +318,7 @@ export default function RunScreen() {
         }
       }
     },
-    [cancelRoute, speak, postToMap]
+    [handlePetFound, speak, postToMap]
   );
 
   const startTracking = useCallback(async () => {
@@ -356,29 +393,13 @@ export default function RunScreen() {
   }, [postToMap, handleOwnerPositionUpdate, speak]);
 
   const stopTracking = useCallback(() => {
-    subscriptionRef.current?.remove();
-    subscriptionRef.current = null;
-    if (jitterTimerRef.current) {
-      clearInterval(jitterTimerRef.current);
-      jitterTimerRef.current = null;
-    }
-    setIsTracking(false);
-    cancelRoute();
-
-    const durationSeconds = sessionStartRef.current ? Math.round((Date.now() - sessionStartRef.current) / 1000) : 0;
-    sessionStartRef.current = null;
-
-    const summary = completeRun({ hexIds: [], distanceMeters, durationSeconds });
+    const { summary, durationSeconds } = finishTrackingSession();
 
     Alert.alert(
       'Busca encerrada',
       `Você percorreu ${formatDistance(distanceMeters)} em ${formatDuration(durationSeconds)} procurando seu pet.\nXP ganho: +${summary.xpGained}`
     );
-
-    setPetSignal(null);
-    petSignalRef.current = null;
-    setDistanceToPet(null);
-  }, [cancelRoute, completeRun, distanceMeters]);
+  }, [finishTrackingSession, distanceMeters]);
 
   const handleWebViewLoad = useCallback(() => {
     isMapReadyRef.current = true;
@@ -464,15 +485,46 @@ export default function RunScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, isTracking ? styles.buttonStop : styles.buttonStart]}
-            onPress={isTracking ? stopTracking : startTracking}
-          >
-            {!isTracking && <Ionicons name="paw" size={18} color="#FFFFFF" style={styles.buttonIcon} />}
-            <Text style={styles.buttonText}>{isTracking ? 'Parar rastreamento' : 'Localizar meu pet'}</Text>
-          </TouchableOpacity>
+          {isTracking ? (
+            <>
+              <TouchableOpacity style={[styles.button, styles.buttonFound]} onPress={handlePetFound}>
+                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Achei meu pet!</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.stopLink} onPress={stopTracking}>
+                <Text style={styles.stopLinkText}>Parar rastreamento</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={[styles.button, styles.buttonStart]} onPress={startTracking}>
+              <Ionicons name="paw" size={18} color="#FFFFFF" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Localizar meu pet</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+
+      <Modal visible={showFoundModal} transparent animationType="fade" onRequestClose={() => setShowFoundModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalAiBadge}>
+              <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={styles.modalTitle}>Encontrado! 🎉</Text>
+            <Text style={styles.modalBody}>
+              Notamos que o {petName} tinha se perdido. Quer aproveitar e marcar uma consulta veterinária agora, só
+              por precaução?
+            </Text>
+            <TouchableOpacity style={styles.modalPrimaryButton} onPress={handleOpenVetBooking}>
+              <Ionicons name="calendar-outline" size={18} color="#FFFFFF" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Marcar consulta</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalSecondaryButton} onPress={() => setShowFoundModal(false)}>
+              <Text style={styles.modalSecondaryButtonText}>Agora não</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -605,7 +657,54 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   buttonStart: { backgroundColor: colors.primary },
-  buttonStop: { backgroundColor: colors.primaryDark },
+  buttonFound: { backgroundColor: colors.accent },
   buttonIcon: { marginRight: 8 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  stopLink: { alignItems: 'center', paddingVertical: 10, marginTop: 2 },
+  stopLinkText: { color: colors.textMuted, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 20, 32, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  modalAiBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  modalBody: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalPrimaryButton: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+  },
+  modalSecondaryButton: { paddingVertical: 12 },
+  modalSecondaryButtonText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
 });

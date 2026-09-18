@@ -20,9 +20,7 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Histórico: 'time',
 };
 
-// Largura máxima do conteúdo em telas largas (desktop web), para os painéis
-// flutuantes não esticarem de ponta a ponta. No celular isso não tem efeito
-// (a tela já é mais estreita que esse valor).
+
 const CHROME_MAX_WIDTH = 480;
 
 // No app nativo (ou dentro de um navegador de celular) a tela já é do tamanho de um celular,
