@@ -7,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import RunScreen from './src/screens/RunScreen';
 import PetScreen from './src/screens/PetScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import { usePetStore } from './src/store/usePetStore';
 import { colors } from './src/theme/colors';
 
@@ -20,6 +21,7 @@ const TAB_ICONS: Record<string, string> = {
 
 export default function App() {
   const [hasHydrated, setHasHydrated] = useState(usePetStore.persist.hasHydrated());
+  const photoUri = usePetStore((state) => state.pet.photoUri);
 
   useEffect(() => {
     const unsubscribe = usePetStore.persist.onFinishHydration(() => setHasHydrated(true));
@@ -32,6 +34,15 @@ export default function App() {
       <View style={styles.loading}>
         <Text style={styles.loadingText}>Carregando... 🐾</Text>
       </View>
+    );
+  }
+
+  if (!photoUri) {
+    return (
+      <SafeAreaProvider>
+        <OnboardingScreen />
+        <StatusBar style="auto" />
+      </SafeAreaProvider>
     );
   }
 

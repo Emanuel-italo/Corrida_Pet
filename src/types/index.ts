@@ -16,6 +16,10 @@ export interface RunSummary {
 
 export interface PetState {
   name: string;
+  photoUri: string | null;
   level: number;
   xp: number;
+  hunger: number;
+  energy: number;
+  lastCareUpdate: number;
 }

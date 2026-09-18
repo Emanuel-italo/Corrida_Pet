@@ -8,8 +8,13 @@
     "userInterfaceStyle": "light",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -35,6 +40,14 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Precisamos da sua localização para acompanhar sua corrida/caminhada e conquistar território no mapa."
+        }
+      ],
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos acessar suas fotos para escolher a foto do seu pet.",
+          "cameraPermission": "Precisamos da câmera para tirar uma foto do seu pet."
         }
       ]
     ]

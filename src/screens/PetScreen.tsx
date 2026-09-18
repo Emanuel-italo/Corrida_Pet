@@ -1,7 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { usePetStore } from '../store/usePetStore';
-import { petStageForLevel, xpThresholdForLevel } from '../store/leveling';
+import {
+  currentNeedValue,
+  ENERGY_DECAY_PER_HOUR,
+  frameTierForLevel,
+  HUNGER_DECAY_PER_HOUR,
+  moodForNeeds,
+  xpThresholdForLevel,
+} from '../store/leveling';
 import { formatDistance } from '../hex/format';
 import { colors } from '../theme/colors';
 
@@ -19,6 +26,11 @@ export default function PetScreen() {
     [history]
   );
 
+  const hunger = currentNeedValue(pet.hunger, pet.lastCareUpdate, HUNGER_DECAY_PER_HOUR);
+  const energy = currentNeedValue(pet.energy, pet.lastCareUpdate, ENERGY_DECAY_PER_HOUR);
+  const mood = moodForNeeds(hunger, energy);
+  const frameTier = frameTierForLevel(pet.level);
+
   const xpThreshold = xpThresholdForLevel(pet.level);
   const xpProgress = Math.min(pet.xp / xpThreshold, 1);
 
@@ -30,7 +42,16 @@ export default function PetScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>{petStageForLevel(pet.level)}</Text>
+      <View style={[styles.avatarRing, { borderColor: frameTier.color }]}>
+        {pet.photoUri && <Image source={{ uri: pet.photoUri }} style={styles.avatarImage} />}
+        {frameTier.badge ? (
+          <View style={[styles.tierBadge, { backgroundColor: frameTier.color }]}>
+            <Text style={styles.tierBadgeText}>{frameTier.badge}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <Text style={styles.tierLabel}>{frameTier.name}</Text>
 
       {isEditingName ? (
         <View style={styles.nameEditRow}>
@@ -52,8 +73,11 @@ export default function PetScreen() {
         </TouchableOpacity>
       )}
 
-      <Text style={styles.level}>Nível {pet.level}</Text>
+      <Text style={styles.mood}>
+        {mood.emoji} {mood.label}
+      </Text>
 
+      <Text style={styles.level}>Nível {pet.level}</Text>
       <View style={styles.xpBarBackground}>
         <View style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]} />
       </View>
@@ -61,10 +85,26 @@ export default function PetScreen() {
         {pet.xp} / {xpThreshold} XP
       </Text>
 
+      <View style={styles.needsSection}>
+        <NeedBar label="🍖 Fome" value={hunger} color={colors.primary} />
+        <NeedBar label="⚡ Energia" value={energy} color={colors.accent} />
+      </View>
+
       <View style={styles.statsGrid}>
         <StatCard label="Território" value={`${territory.length} hex`} />
         <StatCard label="Distância total" value={formatDistance(totalDistanceMeters)} />
         <StatCard label="Corridas" value={`${history.length}`} />
+      </View>
+    </View>
+  );
+}
+
+function NeedBar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={styles.needRow}>
+      <Text style={styles.needLabel}>{label}</Text>
+      <View style={styles.needBarBackground}>
+        <View style={[styles.needBarFill, { width: `${value}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
@@ -80,10 +120,33 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', paddingTop: 32, paddingHorizontal: 20 },
-  emoji: { fontSize: 96 },
-  name: { fontSize: 22, fontWeight: '700', color: colors.text, marginTop: 8 },
-  nameEditRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', paddingTop: 24, paddingHorizontal: 20 },
+  avatarRing: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  avatarImage: { width: 130, height: 130, borderRadius: 65 },
+  tierBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  tierBadgeText: { fontSize: 16 },
+  tierLabel: { fontSize: 12, color: colors.textMuted, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  name: { fontSize: 22, fontWeight: '700', color: colors.text, marginTop: 4 },
+  nameEditRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 },
   nameInput: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -96,18 +159,24 @@ const styles = StyleSheet.create({
   },
   saveButton: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   saveButtonText: { color: '#fff', fontWeight: '700' },
-  level: { fontSize: 16, color: colors.textMuted, marginTop: 4 },
+  mood: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
+  level: { fontSize: 16, color: colors.textMuted, marginTop: 12 },
   xpBarBackground: {
     width: '100%',
     height: 12,
     borderRadius: 6,
     backgroundColor: colors.border,
-    marginTop: 20,
+    marginTop: 8,
     overflow: 'hidden',
   },
   xpBarFill: { height: '100%', backgroundColor: colors.accent },
   xpLabel: { marginTop: 6, color: colors.textMuted, fontSize: 12 },
-  statsGrid: { flexDirection: 'row', gap: 12, marginTop: 32, width: '100%' },
+  needsSection: { width: '100%', marginTop: 20, gap: 10 },
+  needRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  needLabel: { width: 90, fontSize: 13, color: colors.text },
+  needBarBackground: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden' },
+  needBarFill: { height: '100%' },
+  statsGrid: { flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' },
   card: {
     flex: 1,
     backgroundColor: colors.surface,
