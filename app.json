@@ -49,7 +49,8 @@
           "photosPermission": "Precisamos acessar suas fotos para escolher a foto do seu pet.",
           "cameraPermission": "Precisamos da câmera para tirar uma foto do seu pet."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

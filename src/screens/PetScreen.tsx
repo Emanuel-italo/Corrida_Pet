@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePetStore } from '../store/usePetStore';
 import {
   currentNeedValue,
@@ -14,9 +15,9 @@ import { colors } from '../theme/colors';
 
 export default function PetScreen() {
   const pet = usePetStore((state) => state.pet);
-  const territory = usePetStore((state) => state.territory);
   const history = usePetStore((state) => state.history);
   const setPetName = usePetStore((state) => state.setPetName);
+  const insets = useSafeAreaInsets();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [draftName, setDraftName] = useState(pet.name);
@@ -41,59 +42,60 @@ export default function PetScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.avatarRing, { borderColor: frameTier.color }]}>
-        {pet.photoUri && <Image source={{ uri: pet.photoUri }} style={styles.avatarImage} />}
-        {frameTier.badge ? (
-          <View style={[styles.tierBadge, { backgroundColor: frameTier.color }]}>
-            <Text style={styles.tierBadgeText}>{frameTier.badge}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <Text style={styles.tierLabel}>{frameTier.name}</Text>
-
-      {isEditingName ? (
-        <View style={styles.nameEditRow}>
-          <TextInput
-            style={styles.nameInput}
-            value={draftName}
-            onChangeText={setDraftName}
-            autoFocus
-            maxLength={20}
-            onSubmitEditing={saveName}
-          />
-          <TouchableOpacity style={styles.saveButton} onPress={saveName}>
-            <Text style={styles.saveButtonText}>Salvar</Text>
-          </TouchableOpacity>
+    <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
+      <View style={styles.content}>
+        <View style={[styles.avatarRing, { borderColor: frameTier.color }]}>
+          {pet.photoUri && <Image source={{ uri: pet.photoUri }} style={styles.avatarImage} />}
+          {frameTier.badge ? (
+            <View style={[styles.tierBadge, { backgroundColor: frameTier.color }]}>
+              <Text style={styles.tierBadgeText}>{frameTier.badge}</Text>
+            </View>
+          ) : null}
         </View>
-      ) : (
-        <TouchableOpacity onPress={() => setIsEditingName(true)}>
-          <Text style={styles.name}>{pet.name} ✏️</Text>
-        </TouchableOpacity>
-      )}
 
-      <Text style={styles.mood}>
-        {mood.emoji} {mood.label}
-      </Text>
+        <Text style={styles.tierLabel}>{frameTier.name}</Text>
 
-      <Text style={styles.level}>Nível {pet.level}</Text>
-      <View style={styles.xpBarBackground}>
-        <View style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]} />
-      </View>
-      <Text style={styles.xpLabel}>
-        {pet.xp} / {xpThreshold} XP
-      </Text>
+        {isEditingName ? (
+          <View style={styles.nameEditRow}>
+            <TextInput
+              style={styles.nameInput}
+              value={draftName}
+              onChangeText={setDraftName}
+              autoFocus
+              maxLength={20}
+              onSubmitEditing={saveName}
+            />
+            <TouchableOpacity style={styles.saveButton} onPress={saveName}>
+              <Text style={styles.saveButtonText}>Salvar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => setIsEditingName(true)}>
+            <Text style={styles.name}>{pet.name} ✏️</Text>
+          </TouchableOpacity>
+        )}
 
-      <View style={styles.needsSection}>
-        <NeedBar label="🍖 Fome" value={hunger} color={colors.primary} />
-        <NeedBar label="⚡ Energia" value={energy} color={colors.accent} />
-      </View>
+        <Text style={styles.mood}>
+          {mood.emoji} {mood.label}
+        </Text>
 
-      <View style={styles.statsGrid}>
-        <StatCard label="Território" value={`${territory.length} hex`} />
-        <StatCard label="Distância total" value={formatDistance(totalDistanceMeters)} />
-        <StatCard label="Corridas" value={`${history.length}`} />
+        <Text style={styles.level}>Nível {pet.level}</Text>
+        <View style={styles.xpBarBackground}>
+          <View style={[styles.xpBarFill, { width: `${xpProgress * 100}%` }]} />
+        </View>
+        <Text style={styles.xpLabel}>
+          {pet.xp} / {xpThreshold} XP
+        </Text>
+
+        <View style={styles.needsSection}>
+          <NeedBar label="🍖 Fome" value={hunger} color={colors.primary} />
+          <NeedBar label="⚡ Energia" value={energy} color={colors.accent} />
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard label="Distância total" value={formatDistance(totalDistanceMeters)} />
+          <StatCard label="Buscas realizadas" value={`${history.length}`} />
+        </View>
       </View>
     </View>
   );
@@ -120,7 +122,14 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', paddingTop: 24, paddingHorizontal: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 96,
+  },
+  content: { width: '100%', maxWidth: 480, alignItems: 'center' },
   avatarRing: {
     width: 140,
     height: 140,

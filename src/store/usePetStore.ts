@@ -15,9 +15,11 @@ interface PetStore {
   territory: string[];
   history: RunSummary[];
   hasHydrated: boolean;
+  voiceIdentifier: string | null;
   setHasHydrated: (value: boolean) => void;
   setPetName: (name: string) => void;
   setPetPhoto: (uri: string) => void;
+  setVoiceIdentifier: (identifier: string | null) => void;
   completeRun: (input: CompleteRunInput) => RunSummary;
   resetProgress: () => void;
 }
@@ -39,9 +41,11 @@ export const usePetStore = create<PetStore>()(
       territory: [],
       history: [],
       hasHydrated: false,
+      voiceIdentifier: null,
       setHasHydrated: (value) => set({ hasHydrated: value }),
       setPetName: (name) => set((state) => ({ pet: { ...state.pet, name } })),
       setPetPhoto: (uri) => set((state) => ({ pet: { ...state.pet, photoUri: uri } })),
+      setVoiceIdentifier: (identifier) => set({ voiceIdentifier: identifier }),
       completeRun: ({ hexIds, distanceMeters, durationSeconds }) => {
         const state = get();
         const territorySet = new Set(state.territory);

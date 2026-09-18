@@ -40,6 +40,36 @@ export const MAP_HTML = `
       font-size: 30px;
       filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
     }
+
+    .owner-marker { position: relative; width: 36px; height: 36px; }
+
+    .owner-marker-pulse {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      background: rgba(26, 110, 189, 0.35);
+      animation: ownerPulse 2s ease-out infinite;
+    }
+
+    .owner-marker-dot {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      background: #1A6EBD;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    }
+
+    @keyframes ownerPulse {
+      0% { transform: scale(0.3); opacity: 0.9; }
+      100% { transform: scale(1); opacity: 0; }
+    }
   </style>
 </head>
 <body>
@@ -55,7 +85,7 @@ export const MAP_HTML = `
     var ownedLayer = L.layerGroup().addTo(map);
     var newLayer = L.layerGroup().addTo(map);
     var pathLine = L.polyline([], { color: '#E76F51', weight: 4 }).addTo(map);
-    var routeLine = L.polyline([], { color: '#2A9D8F', weight: 5, opacity: 0.8, dashArray: '1, 10', lineCap: 'round' }).addTo(map);
+    var routeLine = L.polyline([], { color: '#4285F4', weight: 5, opacity: 0.9, lineCap: 'round' }).addTo(map);
     var destinationIcon = L.divIcon({
       className: 'destination-marker',
       html: '<div class="destination-pin">📍</div>',
@@ -70,6 +100,22 @@ export const MAP_HTML = `
       iconAnchor: [21, 21],
     });
     var userMarker = L.marker([-23.5505, -46.6333], { icon: userIcon }).addTo(map);
+
+    var ownerIcon = L.divIcon({
+      className: 'owner-marker-wrapper',
+      html: '<div class="owner-marker"><div class="owner-marker-pulse"></div><div class="owner-marker-dot"></div></div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+    var ownerMarker = null;
+
+    function setOwnerPosition(lat, lng) {
+      if (!ownerMarker) {
+        ownerMarker = L.marker([lat, lng], { icon: ownerIcon }).addTo(map);
+      } else {
+        ownerMarker.setLatLng([lat, lng]);
+      }
+    }
 
     function setUserIcon(dataUri) {
       var icon = L.divIcon({
@@ -131,6 +177,7 @@ export const MAP_HTML = `
       try {
         var data = JSON.parse(event.data);
         if (data.type === 'setUserPosition') setUserPosition(data.lat, data.lng, data.recenter);
+        else if (data.type === 'setOwnerPosition') setOwnerPosition(data.lat, data.lng);
         else if (data.type === 'setPath') setPath(data.points);
         else if (data.type === 'setHexagons') setHexagons(data.owned, data.newOnes);
         else if (data.type === 'setInitialRegion') setInitialRegion(data.lat, data.lng, data.zoom);
