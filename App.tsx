@@ -14,10 +14,19 @@ import { colors } from './src/theme/colors';
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, string> = {
-  Corrida: '🏃',
+  Buscar: '📡',
   'Meu Pet': '🐾',
   Histórico: '📜',
 };
+
+// Mantém o app com largura de celular mesmo em telas grandes (navegador/tablet).
+function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.shell}>
+      <View style={styles.frame}>{children}</View>
+    </View>
+  );
+}
 
 export default function App() {
   const [hasHydrated, setHasHydrated] = useState(usePetStore.persist.hasHydrated());
@@ -40,7 +49,9 @@ export default function App() {
   if (!photoUri) {
     return (
       <SafeAreaProvider>
-        <OnboardingScreen />
+        <AppShell>
+          <OnboardingScreen />
+        </AppShell>
         <StatusBar style="auto" />
       </SafeAreaProvider>
     );
@@ -48,27 +59,37 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerStyle: { backgroundColor: colors.surface },
-            headerTitleStyle: { color: colors.text },
-            tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: colors.textMuted,
-            tabBarIcon: () => <Text style={{ fontSize: 20 }}>{TAB_ICONS[route.name]}</Text>,
-          })}
-        >
-          <Tab.Screen name="Corrida" component={RunScreen} />
-          <Tab.Screen name="Meu Pet" component={PetScreen} />
-          <Tab.Screen name="Histórico" component={HistoryScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <AppShell>
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              headerStyle: { backgroundColor: colors.surface },
+              headerTitleStyle: { color: colors.text },
+              tabBarActiveTintColor: colors.primary,
+              tabBarInactiveTintColor: colors.textMuted,
+              tabBarIcon: () => <Text style={{ fontSize: 20 }}>{TAB_ICONS[route.name]}</Text>,
+            })}
+          >
+            <Tab.Screen name="Buscar" component={RunScreen} />
+            <Tab.Screen name="Meu Pet" component={PetScreen} />
+            <Tab.Screen name="Histórico" component={HistoryScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </AppShell>
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: { flex: 1, backgroundColor: '#2B2622', alignItems: 'center' },
+  frame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   loadingText: { fontSize: 18, color: colors.text },
 });
