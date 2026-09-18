@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import RunScreen from './src/screens/RunScreen';
@@ -68,32 +68,41 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppShell>
-        <NavigationContainer>
-          <Tab.Navigator
-            screenOptions={({ route }) => ({
-              headerShown: false,
-              tabBarActiveTintColor: colors.primary,
-              tabBarInactiveTintColor: colors.textMuted,
-              tabBarShowLabel: true,
-              tabBarLabel: route.name,
-              tabBarLabelStyle: styles.tabBarLabel,
-              tabBarStyle: styles.tabBar,
-              tabBarItemStyle: styles.tabBarItem,
-              tabBarIcon: ({ focused, color }) => (
-                <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperActive]}>
-                  <Ionicons name={TAB_ICONS[route.name]} size={20} color={color} />
-                </View>
-              ),
-            })}
-          >
-            <Tab.Screen name="Buscar" component={RunScreen} />
-            <Tab.Screen name="Meu Pet" component={PetScreen} />
-            <Tab.Screen name="Histórico" component={HistoryScreen} />
-          </Tab.Navigator>
-        </NavigationContainer>
+        <AppTabs />
       </AppShell>
       <StatusBar style="auto" />
     </SafeAreaProvider>
+  );
+}
+
+function AppTabs() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarShowLabel: true,
+          tabBarLabel: route.name,
+          tabBarLabelPosition: 'beside-icon',
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarStyle: [styles.tabBar, { bottom: insets.bottom + 14 }],
+          tabBarItemStyle: styles.tabBarItem,
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperActive]}>
+              <Ionicons name={TAB_ICONS[route.name]} size={20} color={color} />
+            </View>
+          ),
+        })}
+      >
+        <Tab.Screen name="Buscar" component={RunScreen} />
+        <Tab.Screen name="Meu Pet" component={PetScreen} />
+        <Tab.Screen name="Histórico" component={HistoryScreen} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
