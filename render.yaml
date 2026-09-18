@@ -1,0 +1,10 @@
+services:
+  - name: corrida-pet
+    type: web
+    runtime: static
+    buildCommand: npm install && npx expo export --platform web
+    staticPublishPath: ./dist
+    routes:
+      - path: /*
+        destination: /index.html
+        type: rewrite
